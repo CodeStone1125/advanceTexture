@@ -100,12 +100,14 @@ gl_Position = pos.xyww;
 In `fresnel.frag` I implement the fountion with:
 1. I calculate the View Direction and Cosine of the Angle, where `viewDir` is the normalized view direction,
 and `cosTheta` is the cosine of the angle between the view direction and the surface normal.
-
 2. I compute the Fresnel Equation using `fresnelPower`, `fresnelScale`, and `fresnelBias`, and then use `clamp` to
 limit the value range to [0.0, 1.0].
-
 3. I adjust fresnelTerm with `mix` to ensure that the adjustments to `fresnelPower`, `fresnelScale`, and `fresnelBias`
 can be smoothly presented on the screen.
+4. Calculate Reflection and Refraction Vectors (reflection, refraction)
+5. Query Textures for Reflection and Refraction Colors
+6. Interpolate Between Reflection and Refraction Colors 
+7. Gamma Correction and Output 
 
 ```cpp
     // Refractive index of R, G, and B respectively
