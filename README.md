@@ -278,6 +278,7 @@ return textureCoordinate - p;
 ### INFINITR FAR SKYBOX
 Initially I misunderstand `gl_Position = pos.xyww;`, Also I don't understand
 the hint "remove the transaction matrix". Thus error happened.
+
 ![螢幕擷取畫面 2023-12-11 205600](https://github.com/CodeStone1125/advanceTexture/assets/72511296/7b04c3c3-d57c-462d-9454-10647164f435)
 
 
