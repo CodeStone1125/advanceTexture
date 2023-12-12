@@ -150,12 +150,12 @@ can be smoothly presented on the screen.
 ```
 
 #### 3. NORMAL MAPPING
+In `calculatenormal.frag` I implement the fountion with:
 1. Defines a small value `delta` used for finite differences
 2. Get the screen-space position of the fragment
 3. Sample four points in screen space: original point, x-shift, y-shift, x & y coordinate-shift
 4. calculate surface normals by four sample point
 5. Average the surface normal and transform the normal from the range [-1, 1] to [0, 1]
-6. Output the height map
 
 ```cpp
  const float delta = 0.01;
@@ -180,285 +180,51 @@ can be smoothly presented on the screen.
 
  // Transform normal from [-1, 1] to RGB [0, 1]
  normal = vec4(avgNormal * 0.5 + 0.5, 1.0);
-
- // Output the height map
- height = p0.z * 0.5 + 0.5;
 ```
-#### III. wing
+#### 4. BLINN-PHONG SHADING
+In `normalmap.vert` I implement the fountion with:
+1. Calculate the inverse of the tangent space transform matrix (TBN matrix)
+2. Transform light direction, viewPosition, and position to the tangent space.
 This part is easy just render a cube and make sure it will in right location
 ```cpp
-void renderAirplaneWings() {
-  // 設置機翼的顏色和變換
-  glColor3f(RED);  // 設定顏色，例如紅色
-
-  glPushMatrix();
-  glScalef(4.0f, 0.5f, 1.0f);          // 根據需要進行縮放
-  drawUnitCube();                      // 渲染長方體
-  glPopMatrix();
-}
+  // Direction of light, hard coded here for convenience.
+  const vec3 lightDirection = normalize(vec3(-11.1, -24.9, 14.8));
+  // TODO4:
+  // 1. Calculate the inverse of the tangent space transform matrix (TBN matrix)
+  mat3 TBNMatrix = mat3(tangent_in, bitangent_in, normal_in);
+  mat3 invTBNMatrix = inverse(transpose(TBNMatrix));
+  
+  // 2. Transform light direction, viewPosition, and position to the tangent space.
+  vs_out.lightDirection = normalize(invTBNMatrix * lightDirection);
+  vs_out.viewPosition = vec3(viewPosition);
+  vs_out.position = vec3(modelMatrix * vec4(position_in, 1.0));
+  
+  vs_out.textureCoordinate = textureCoordinate_in;
 ```
-#### IV. Airplane
-In this fountion I render airplane with `renderAirplaneWings()`,  `renderAirplaneTail() ` 
-and `renderAirplaneBody() `, then move the components to the right place.
+and in `normalmap.frag`, I completed with the following function:
+1. Query diffuse texture
+2. Query normalTexture to find this fragment's normal
+3. Normalize the normal vector
+4. Use Blinn-Phong shading with parameters ks = kd = 0.75, shininess = 8.0
 ```cpp
-void renderAirplane() {
-    // 渲染飛機的函數，包括機身、機翼和機尾
-    // 渲染機身
-    glPushMatrix();
-    // Note: Airplane is rotated so the up direction is Y-axis not Z-axis
-    glTranslatef(airplaneX, airplaneHeight, airplaneY);  // 平移至飛機底部中心，增加高度
-    glRotatef(-airplaneRotationY, 0.0f, 1.0f, 0.0f);   // 根據旋轉角度旋轉飛機
-    renderAirplaneBody();                             // 渲染飛機機身
-    glPopMatrix();
+vec3 viewDirection = normalize(fs_in.viewPosition - fs_in.position);
+vec2 textureCoordinate = useParallaxMapping ? parallaxMapping(fs_in.textureCoordinate, viewDirection) : fs_in.textureCoordinate;
+if (useParallaxMapping && (textureCoordinate.x > 1.0 || textureCoordinate.y > 1.0 || textureCoordinate.x < 0.0 || textureCoordinate.y < 0.0))
+  discard;
 
-    // 渲染左机翼
-    glPushMatrix();
-    glTranslatef(airplaneX, airplaneHeight, airplaneY);
-    glRotatef(-airplaneRotationY, 0.0f, 1.0f, 0.0f);  // 根據旋轉角度旋轉飛機
-    glRotatef(180.0f - wingSwingAngle, 0.0f, 0.0f, 1.0f); 
-    renderAirplaneWings();                                
-    glPopMatrix();
+// Query diffuse texture
+vec3 diffuseColor = texture(diffuseTexture, textureCoordinate).rgb;
+vec3 normal = texture(normalTexture, textureCoordinate).rgb * 2.0 - 1.0;
 
-    // 渲染右机翼
-    glPushMatrix();
-    glTranslatef(airplaneX, airplaneHeight, airplaneY);
-    glRotatef(-airplaneRotationY, 0.0f, 1.0f, 0.0f);  // 根據旋轉角度旋轉飛機
-    glRotatef(0.0f + wingSwingAngle, 0.0f, 0.0f, 1.0f); 
-    renderAirplaneWings();                                
-    glPopMatrix();
+// 3. Normalize the normal vector
+normal = normalize(normal);
 
-  // 計算前進方向的角度
-    // 渲染機尾
-    glPushMatrix();
-    glTranslatef((airplaneX) - (3 * cos(ANGLE_TO_RADIAN(forwardAngle))), airplaneHeight,
-                 ((-3) * sin(ANGLE_TO_RADIAN(forwardAngle)) + airplaneY + 0.5));
-    glRotatef(-airplaneRotationY, 0.0f, 1.0f, 0.0f);
+// 4. Use Blinn-Phong shading with parameters ks = kd = 0.75, shininess = 8.0
+float ambient = 0.1;
+float diffuse = max(dot(normal, normalize(fs_in.lightDirection)), 0.0);
+float specular = pow(max(dot(normalize(viewDirection + normalize(fs_in.lightDirection)), normal), 0.0), 8.0);
 
-
-    glRotatef(180.0f, 0.0f, 0.0f, 1.0f);
-    renderAirplaneTail();
-    glPopMatrix();
-}
-```
-### 3. airplane control
-In this section, there 4 parts:
-* Wings swing
-* fly an forward
-* Airplane body rotation
-* Trace location and angle
-#### I.Wings swing, 
-* Step1. Everytime `SPACE` be pressed, it will increase the total angle that wings need to swing.
-* Step2. The direction of wing swing will change whenever it meet `20` or `-20` degree.
-  Note:`flag` for decide the direction of wing Swing and it;s default to 1
-```cpp
-   //Everytime `SPACE` be pressed, it will increase the total angle that wings need to swing.
-   case GLFW_KEY_SPACE:
-      airplaneWingRotation += 80;
-      flag = 1;
-    break;
-
-    //The direction of wing swing will change whenever it meet `20` or `-20` degree.
-    if (wingSwingAngle == 20 || wingSwingAngle == -20) {
-      flag = 1 - flag;
-    }
-
-    //slowly swing wings
-    if (airplaneWingRotation > 0) {
-      if (flag == 1) {
-        wingSwingAngle += swingSpeed;
-        airplaneWingRotation -= swingSpeed;
-      } else if (flag == 0) {
-        wingSwingAngle -= swingSpeed;
-        airplaneWingRotation -= swingSpeed;
-      }
-    }
+float lighting = ambient + 0.75 * diffuse + 0.75 * specular;
+FragColor = vec4(lighting * diffuseColor, 1.0);
 ```
 
-#### II. fly, forward and decent
-* Step1. Everytime `SPACE` be pressed, it will increase the total fly height and front distance that
-  airplane need to fly.
-* Step2. Caculate the target location with cos(forwardAngle), sin(forwardAngle)
-* Step3. slowly increase the height of airplane if needed
-  Note: Airplane is rotated so the up direction is Y-axis not Z-axis
-* Step4. slowly decrease the height of airplane if not rising and grounded
-```cpp
-    // Everytime `SPACE` be pressed, it will increase the total fly height and front distance that
-      airplane need to fly.
-    case GLFW_KEY_SPACE:
-       // 按住空格鍵時執行飛行操作
-       // 增加飛機的高度
-       targetHeight += 3;
-       front += 1.5;
-      break;
-
-    //Step2. Caculate the target location with cos(forwardAngle), sin(forwardAngle)
-    if (front > 0) {
-      forwardAngle = airplaneRotationY - 90;  // 計算前進方向的角度
-      airplaneX += flySpeed * cos(ANGLE_TO_RADIAN(forwardAngle));
-      airplaneY += flySpeed * sin(ANGLE_TO_RADIAN(forwardAngle));
-      front -= flySpeed;
-    }
-    //* Step3. slowly increase the height of airplane if needed
-    if (targetHeight > 0) {
-      airplaneHeight += ascentSpeed;
-      targetHeight -= ascentSpeed;
-    }
-    //* Step4. slowly decrease the height of airplane if not rising and grounded
-    else if (airplaneHeight > 2) {
-      airplaneHeight -= decentSpeed;
-    }
-```
-
-#### III.Airplane body rotation
-* Step1. Everytime `LEFT` or `RIGHT` be pressed, it will increase the total angle need to rotate.
-* Step2. slowly rotate the angle of airplane if `rotationY` still remain and it will decide turn left or right
-  by value of `rotationY`
-```cpp
-    //Everytime `LEFT` or `RIGHT` be pressed, it will increase the total angle need to rotate.
-    case GLFW_KEY_LEFT:
-        // 按下左箭頭鍵時執行向左轉的操作
-        rotationY -= 5.0f;
-
-        break;
-    case GLFW_KEY_RIGHT:
-        // 按下右箭頭鍵時執行向右轉的操作
-        rotationY += 5.0f;
-
-        break;
-    //slowly rotate the angle of airplane if `rotationY` still remain 
-    if (rotationY > 0) { //decide turn left or rightby value of `rotationY` 
-      airplaneRotationY += rotationSpeed;
-      rotationY -= rotationSpeed;
-      forwardAngle = airplaneRotationY - 90;
-    } else if (rotationY < 0) {
-      airplaneRotationY -= rotationSpeed;
-      rotationY += rotationSpeed;
-      forwardAngle = airplaneRotationY - 90;
-    }
-```
-## Problems you encountered
-### 1. GFX Glitch
-The first trouble I met is "GFX Glitch" which mean my render object can't present correctly
- 
-|GFX Glitch|
-| --- |
-|![279951678-f29986fe-789a-409e-9ab9-3ddec62a761f](https://github.com/CodeStone1125/renderAirplane/assets/72511296/893f40be-0923-4813-89f0-847d11850a03)| 
-
-
-sol: TA suggests me to check the draw order of vertex and it work. shout out to TA.
-
-### 2. Tail's location goes wrong
-The second one is that my airplane tail will go to wrong location whenever I try to fly
-
-|Tail is lost|
-| --- | 
-|![279953867-f9b63745-01e7-47e8-a434-0e0000863baf](https://github.com/CodeStone1125/renderAirplane/assets/72511296/c7b409a2-24b8-4e3d-8d99-1ef4aa3fcf1a)| 
-
-
-sol: The root of problem is the order of  `glTranslatef() `, `glRotatef()`
-if I rotate airplane in advance the axis of airplane would be different,
-there I should `glTranslatef() ` first then `glRotatef()`.
-
-### 3. Can't slowly raise airplane height
-Originally I set airplane height increase 5 as long as `SPACE` be pressed, but I airplane will
-teleport to the  "height+5" immediately instean of slow rise.
-
-sol: The solution is in the `II. fly, forward and decent`
-
-## Bonus
-### Bullet shooting
-I additionally implement a fountion to shot a bullet.
-
-| Bullet shot |
-| --- | 
-| ![279957952-6a8af357-edc4-47cc-bdfd-b8e785021e4e (1)](https://github.com/CodeStone1125/renderAirplane/assets/72511296/243ab1e4-bcc8-4096-9728-e2901a585ef9)| 
-
-* Step1. Everytime `G`  be pressed, it will record the right now location for airplane.
-* Step2. base on location recorded in `Step1`, render a bullet and let it slow move forward until reach the limit distance 
-```cpp
-//Render bullet
-void renderBullet() {
-  const float radius = 0.1f;
-  const float height = 0.6f;
-  const int segments = 64;
-  const float slice = 360.0f / segments;
-  glColor3f(RED);
-  glRotatef(90.0f, 1.0f, 0.0f, 0.0f);
-  glBegin(GL_QUAD_STRIP);
-
-  for (int i = 0; i <= segments; i++) {
-    float angle = slice * i;
-    float x = radius * std::cos(ANGLE_TO_RADIAN(angle));
-    float z = radius * std::sin(ANGLE_TO_RADIAN(angle));
-
-    // Vertices on the side of the cylinder
-    glVertex3f(x, 0.0f, z);
-    glVertex3f(x, height, z);
-  }
-
-  glEnd();
-
-  // Top and bottom faces
-  glBegin(GL_TRIANGLE_FAN);
-  glVertex3f(0.0f, 0.0f, 0.0f);  // Center of the bottom face
-
-  for (int i = 0; i <= segments; i++) {
-    float angle = slice * i;
-    float x = radius * std::cos(ANGLE_TO_RADIAN(angle));
-    float z = radius * std::sin(ANGLE_TO_RADIAN(angle));
-    glVertex3f(x, 0.6f, z);
-  }
-  glEnd();
-
-  // Reverse the rendering order for the bottom face
-  glBegin(GL_TRIANGLE_FAN);
-  glVertex3f(0.0f, -0.9f, 0.0f);  // Center of the bottom face
-
-  for (int i = segments; i >= 0; i--) {  // 改為遞增
-    float angle = slice * i;
-    float x = radius * std::cos(ANGLE_TO_RADIAN(angle));
-    float z = radius * std::sin(ANGLE_TO_RADIAN(angle));  // 使用 std::sin
-    glVertex3f(x, 0.6f, z);
-  }
-  glEnd();
-}
-// 繪製子彈的函數
-void drawBullet() {
-  glPushMatrix();
-  glTranslatef(bulletX, bulletHeight, bulletY);
-  glRotatef(-airplaneRotationY, 0.0f, 1.0f, 0.0f);
-  renderBullet();
-  glEnd();
-  glPopMatrix();
-}
-// Step1. Everytime `G`  be pressed, it will record the right now location for airplane.
-    case GLFW_KEY_G:
-      temp += 3;
-      if (bulletDist == 0) {
-        bulletDist += 30;
-      }
-      break;
-     //record the right now location for airplane. 
-    if (bulletDist == 30) {
-      bulletAngle = forwardAngle-180;
-      bulletX = (airplaneX) - (3 * cos(ANGLE_TO_RADIAN(bulletAngle)));
-      bulletY = ((-3) * sin(ANGLE_TO_RADIAN(bulletAngle)) + airplaneY + 0.5);
-      bulletHeight = airplaneHeight;
-      if (bulletDist == 0 && temp>0) {
-        bulletDist = 30;
-      }
-    }
-//Step2. base on location recorded in `Step1`, render a bullet and let it slow move forward until reach the limit distance 
-    if (temp > 0) {
-      if (bulletDist >= 0) {
-        bulletX += flySpeed * cos(ANGLE_TO_RADIAN(bulletAngle));
-        bulletY += flySpeed * sin(ANGLE_TO_RADIAN(bulletAngle));
-        bulletDist -= 1;
-      }
-      drawBullet();
-      if (bulletDist <= 0) {
-        temp -= 1;
-        bulletDist = 0;
-      }
-    }
-```
