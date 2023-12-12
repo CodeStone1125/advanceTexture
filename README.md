@@ -110,43 +110,43 @@ can be smoothly presented on the screen.
 7. Gamma Correction and Output 
 
 ```cpp
-    // Refractive index of R, G, and B respectively
-    vec3 Eta = vec3(1.39, 1.44, 1.47);
+// Refractive index of R, G, and B respectively
+vec3 Eta = vec3(1.39, 1.44, 1.47);
 
-    // Calculate the view direction and the angle between view direction and normal
-    vec3 viewDir = normalize(fs_in.viewPosition - fs_in.position);
-    float cosTheta = dot(viewDir, normalize(fs_in.normal));
+// Calculate the view direction and the angle between view direction and normal
+vec3 viewDir = normalize(fs_in.viewPosition - fs_in.position);
+float cosTheta = dot(viewDir, normalize(fs_in.normal));
 
-    // Fresnel equation
-    float fresnelTerm = clamp(fresnelBias + fresnelScale * pow(1.0 - cosTheta, fresnelPower), 0.0, 1.0);
-
-
-    // Use mix to interpolate between different values for each parameter
-    float interpolatedFresnelBias = mix(1.0, fresnelBias, fresnelTerm);  // Adjusted to invert the bias effect
-    float interpolatedFresnelScale = mix(1.0, fresnelScale, fresnelTerm);
-    float interpolatedFresnelPower = mix(2.0, fresnelPower, fresnelTerm);
-
-    // Calculate reflection vector using the reflect function
-    vec3 reflection = reflect(-viewDir, normalize(fs_in.normal));
-
-    // Query the texture for reflection color from the skybox
-    vec3 reflectionColor = texture(skybox, reflection).rgb;
-
-    // Calculate refraction vector using the custom refract function
-    vec3 refraction = refract_custom(-viewDir, normalize(fs_in.normal), 1.0 / Eta.x);
-
-    // Query the texture for refraction color from the skybox
-    vec3 refractionColor = texture(skybox, refraction).rgb;
-
-    // Use mix to interpolate between reflection and refraction based on Fresnel term and FresnelBias
-    vec3 finalColor = mix(reflectionColor, refractionColor, 1.0 - fresnelTerm * fresnelBias);
+// Fresnel equation
+float fresnelTerm = clamp(fresnelBias + fresnelScale * pow(1.0 - cosTheta, fresnelPower), 0.0, 1.0);
 
 
-    // Correcting for the inverted reflection
-    finalColor = pow(finalColor, vec3(1.0/2.2));
+// Use mix to interpolate between different values for each parameter
+float interpolatedFresnelBias = mix(1.0, fresnelBias, fresnelTerm);  // Adjusted to invert the bias effect
+float interpolatedFresnelScale = mix(1.0, fresnelScale, fresnelTerm);
+float interpolatedFresnelPower = mix(2.0, fresnelPower, fresnelTerm);
 
-    // Output the final color
-    FragColor = vec4(finalColor, 1.0);
+// Calculate reflection vector using the reflect function
+vec3 reflection = reflect(-viewDir, normalize(fs_in.normal));
+
+// Query the texture for reflection color from the skybox
+vec3 reflectionColor = texture(skybox, reflection).rgb;
+
+// Calculate refraction vector using the custom refract function
+vec3 refraction = refract_custom(-viewDir, normalize(fs_in.normal), 1.0 / Eta.x);
+
+// Query the texture for refraction color from the skybox
+vec3 refractionColor = texture(skybox, refraction).rgb;
+
+// Use mix to interpolate between reflection and refraction based on Fresnel term and FresnelBias
+vec3 finalColor = mix(reflectionColor, refractionColor, 1.0 - fresnelTerm * fresnelBias);
+
+
+// Correcting for the inverted reflection
+finalColor = pow(finalColor, vec3(1.0/2.2));
+
+// Output the final color
+FragColor = vec4(finalColor, 1.0);
 ```
 
 #### 3. NORMAL MAPPING
@@ -273,3 +273,11 @@ vec2 p = viewDirection.xy / viewDirection.z * (depth * depthScale);
 return textureCoordinate - p;
 }
 ```
+
+## PROBLEM I ENCOUNTER
+### INFINITR FAR SKYBOX
+Initially I misunderstand `gl_Position = pos.xyww;`, Also I don't understand
+the hint "remove the transaction matrix". Thus error happened.
+![螢幕擷取畫面 2023-12-11 205600](https://github.com/CodeStone1125/advanceTexture/assets/72511296/7b04c3c3-d57c-462d-9454-10647164f435)
+
+
