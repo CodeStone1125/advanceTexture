@@ -80,20 +80,20 @@ will compute
 * gl_Position.y= pos.y/w
 * gl_Position.z= w/w =1 (For infinite far skybox)
 ```cpp
-	TexCoords = aPos;
+TexCoords = aPos;
 
-	// Convert the view matrix to mat3
-	mat3 viewMat3 = mat3(view);
-	vec3 viewPos3 = viewMat3 * aPos;
+// Convert the view matrix to mat3
+mat3 viewMat3 = mat3(view);
+vec3 viewPos3 = viewMat3 * aPos;
 
-	// Convert the viewPos3 back to vec4
-	vec4 viewPos4 = vec4(viewPos3, 1.0);
+// Convert the viewPos3 back to vec4
+vec4 viewPos4 = vec4(viewPos3, 1.0);
 
-	// Use the modified viewPos4 in the projection
-	vec4 pos = projection * viewPos4;
+// Use the modified viewPos4 in the projection
+vec4 pos = projection * viewPos4;
 
-	// Set gl_Position with pos.xyww
-	gl_Position = pos.xyww;
+// Set gl_Position with pos.xyww
+gl_Position = pos.xyww;
 ```
 5. 
 ```cpp
