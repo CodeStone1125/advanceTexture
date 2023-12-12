@@ -158,28 +158,28 @@ In `calculatenormal.frag` I implement the fountion with:
 5. Average the surface normal and transform the normal from the range [-1, 1] to [0, 1]
 
 ```cpp
- const float delta = 0.01;
- 
- // Get the position of the fragment in screen space
- vec2 fragCoord = gl_FragCoord.xy;
- vec2 fragCoordX = vec2(fragCoord.x + delta, fragCoord.y);
- vec2 fragCoordY = vec2(fragCoord.x, fragCoord.y + delta);
+const float delta = 0.01;
 
- // Sample 4 points
- vec3 p0 = vec3(fragCoord, sin(offset - 0.1 * fragCoord.y));
- vec3 p1 = vec3(fragCoordX, sin(offset - 0.1 * fragCoordX.y));
- vec3 p2 = vec3(fragCoordY, sin(offset - 0.1 * fragCoordY.y));
+// Get the position of the fragment in screen space
+vec2 fragCoord = gl_FragCoord.xy;
+vec2 fragCoordX = vec2(fragCoord.x + delta, fragCoord.y);
+vec2 fragCoordY = vec2(fragCoord.x, fragCoord.y + delta);
 
- // Form triangles and calculate surface normals
- vec3 edge1 = p1 - p0;
- vec3 edge2 = p2 - p0;
- vec3 surfaceNormal = normalize(cross(edge1, edge2));
+// Sample 4 points
+vec3 p0 = vec3(fragCoord, sin(offset - 0.1 * fragCoord.y));
+vec3 p1 = vec3(fragCoordX, sin(offset - 0.1 * fragCoordX.y));
+vec3 p2 = vec3(fragCoordY, sin(offset - 0.1 * fragCoordY.y));
 
- // Average surface normal
- vec3 avgNormal = normalize(surfaceNormal);
+// Form triangles and calculate surface normals
+vec3 edge1 = p1 - p0;
+vec3 edge2 = p2 - p0;
+vec3 surfaceNormal = normalize(cross(edge1, edge2));
 
- // Transform normal from [-1, 1] to RGB [0, 1]
- normal = vec4(avgNormal * 0.5 + 0.5, 1.0);
+// Average surface normal
+vec3 avgNormal = normalize(surfaceNormal);
+
+// Transform normal from [-1, 1] to RGB [0, 1]
+normal = vec4(avgNormal * 0.5 + 0.5, 1.0);
 ```
 #### 4. BLINN-PHONG SHADING
 In `normalmap.vert` I implement the fountion with:
@@ -187,19 +187,19 @@ In `normalmap.vert` I implement the fountion with:
 2. Transform light direction, viewPosition, and position to the tangent space.
 This part is easy just render a cube and make sure it will in right location
 ```cpp
-  // Direction of light, hard coded here for convenience.
-  const vec3 lightDirection = normalize(vec3(-11.1, -24.9, 14.8));
-  // TODO4:
-  // 1. Calculate the inverse of the tangent space transform matrix (TBN matrix)
-  mat3 TBNMatrix = mat3(tangent_in, bitangent_in, normal_in);
-  mat3 invTBNMatrix = inverse(transpose(TBNMatrix));
-  
-  // 2. Transform light direction, viewPosition, and position to the tangent space.
-  vs_out.lightDirection = normalize(invTBNMatrix * lightDirection);
-  vs_out.viewPosition = vec3(viewPosition);
-  vs_out.position = vec3(modelMatrix * vec4(position_in, 1.0));
-  
-  vs_out.textureCoordinate = textureCoordinate_in;
+// Direction of light, hard coded here for convenience.
+const vec3 lightDirection = normalize(vec3(-11.1, -24.9, 14.8));
+// TODO4:
+// 1. Calculate the inverse of the tangent space transform matrix (TBN matrix)
+mat3 TBNMatrix = mat3(tangent_in, bitangent_in, normal_in);
+mat3 invTBNMatrix = inverse(transpose(TBNMatrix));
+
+// 2. Transform light direction, viewPosition, and position to the tangent space.
+vs_out.lightDirection = normalize(invTBNMatrix * lightDirection);
+vs_out.viewPosition = vec3(viewPosition);
+vs_out.position = vec3(modelMatrix * vec4(position_in, 1.0));
+
+vs_out.textureCoordinate = textureCoordinate_in;
 ```
 and in `normalmap.frag`, I completed with the following function:
 1. Query diffuse texture
