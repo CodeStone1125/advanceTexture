@@ -68,6 +68,23 @@ I retrieve the texture from the skybox and assign it to the fragment as follows:
 ```cpp
 FragColor = texture(skybox, TexCoords);
 ```
+amd in `skybox.vert`, I completed the shader with the following function:
+1. I remove the transaction matrix by convert view to mat3 format
+then for further computation , I convert it to mat4 and set w axis to 1 to make
+ it to Homogeneous Coordinates.
+
+2. Use the modified mat4 view in the projection
+3. set gl_Position's z-axis = 1, by set z-axis = w then Perspective Division
+will compute
+* gl_Position.x= pos.x/w
+* gl_Position.y= pos.y/w
+* gl_Position.z= w/w
+
+
+5. 
+```cpp
+FragColor = texture(skybox, TexCoords);
+```
 ### 2. Render airplane
 In this section, there 4 parts:
 * Body
