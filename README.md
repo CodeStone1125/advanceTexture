@@ -282,3 +282,11 @@ the hint "remove the transaction matrix". Thus error happened.
 ![螢幕擷取畫面 2023-12-11 205600](https://github.com/CodeStone1125/advanceTexture/assets/72511296/7b04c3c3-d57c-462d-9454-10647164f435)
 
 ## Compare sphere and cube with two scenes
+|  | cube  | sphere  |
+|  ----  | ----  | ----  |
+|  ----  | scene1  | ----  |
+| Reflect | Reflect image is same as the actually view | Reflected image is distorted by the curvature of the sphere.  |
+| Refract | NO effect | The closer I get to the sphere, the stronger the refractive effect becomes. |
+|  ----  | scene2  | ----  |
+| Basiclly same as scene1 but the scene is all blue make the difference between cuba and sphere diffcault to discover. |
+
