@@ -78,9 +78,23 @@ then for further computation , I convert it to mat4 and set w axis to 1 to make
 will compute
 * gl_Position.x= pos.x/w
 * gl_Position.y= pos.y/w
-* gl_Position.z= w/w
+* gl_Position.z= w/w =1 (For infinite far skybox)
+```cpp
+	TexCoords = aPos;
 
+	// Convert the view matrix to mat3
+	mat3 viewMat3 = mat3(view);
+	vec3 viewPos3 = viewMat3 * aPos;
 
+	// Convert the viewPos3 back to vec4
+	vec4 viewPos4 = vec4(viewPos3, 1.0);
+
+	// Use the modified viewPos4 in the projection
+	vec4 pos = projection * viewPos4;
+
+	// Set gl_Position with pos.xyww
+	gl_Position = pos.xyww;
+```
 5. 
 ```cpp
 FragColor = texture(skybox, TexCoords);
