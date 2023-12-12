@@ -227,4 +227,49 @@ float specular = pow(max(dot(normalize(viewDirection + normalize(fs_in.lightDire
 float lighting = ambient + 0.75 * diffuse + 0.75 * specular;
 FragColor = vec4(lighting * diffuseColor, 1.0);
 ```
+#### 5. BONUS
+For `heightmap` I implement the fountion with:
+The purpose of the line of code is to transform the height value obtained
+from the sampled point p0 into a suitable range for storage. In typical height
+maps, height values are mapped to the [0, 1] interval, and in this specific
+transformation, the height value is scaled by half (* 0.5) and then shifted
+by half (+ 0.5) to ensure it falls within the [0, 1] range. This is done to
+normalize the original height values to a standardized range for later use in rendering.
+```cpp
+// Output the height map
+height = p0.z * 0.5 + 0.5;
+```
+For `Displacement` I implement the fountion with:
+Adjusting vertex positions based on height information from a texture, with the 
+displacement vector calculated from normalized normals and depth scale, affecting
+the final vertex position in screen space.
+```cpp
+vec3 displacementVector = vec3(0);
+if (useDisplacementMapping) {
+  float height = texture(heightTexture, textureCoordinate_in).r;
+  displacementVector = normalize(normal_in) * height * depthScale;
+}
+gl_Position = viewProjectionMatrix * vec4(vs_out.position + displacementVector, 1.0);
+```
 
+For `Parallax` I implement the fountion with:
+This function parallaxMapping is designed for parallax occlusion mapping.
+It samples the height texture to obtain the depth value and then calculates
+a new texture coordinate by adjusting it based on the view direction, depth
+, and a depth scale factor. The modified texture coordinate is then returned
+to achieve the parallax effect.
+```cpp
+vec2 parallaxMapping(vec2 textureCoordinate, vec3 viewDirection)
+{
+// number of depth layers
+const float minLayers = 8;
+const float maxLayers = 32;
+
+// Sample the height texture to get the depth value
+float depth = texture(heightTexture, textureCoordinate).r;
+
+// Calculate the new texture coordinate using parallax mapping
+vec2 p = viewDirection.xy / viewDirection.z * (depth * depthScale);
+return textureCoordinate - p;
+}
+```
