@@ -149,53 +149,40 @@ can be smoothly presented on the screen.
     FragColor = vec4(finalColor, 1.0);
 ```
 
-#### II. tail
-* Step1. I render tail by draw four triange, which is up, down behind, down LEFT, down right perspective
-* Step2. Move it to the right place and make sure it always be.
-  
-  Note: In Step2, I met some troubles and they will be explained in "Tail's location goes wrong"
+#### 3. NORMAL MAPPING
+1. Defines a small value `delta` used for finite differences
+2. Get the screen-space position of the fragment
+3. Sample four points in screen space: original point, x-shift, y-shift, x & y coordinate-shift
+4. calculate surface normals by four sample point
+5. Average the surface normal and transform the normal from the range [-1, 1] to [0, 1]
+6. Output the height map
 
 ```cpp
-void renderAirplaneTail() {
-  const float bottomEdge = 2.0f;
-  const float height1 = 1.0f;
-  const float height2 = 0.5f;
-  glColor3f(GREEN);
+ const float delta = 0.01;
+ 
+ // Get the position of the fragment in screen space
+ vec2 fragCoord = gl_FragCoord.xy;
+ vec2 fragCoordX = vec2(fragCoord.x + delta, fragCoord.y);
+ vec2 fragCoordY = vec2(fragCoord.x, fragCoord.y + delta);
 
-  glPushMatrix();  // 保存當前繪圖矩陣
-  // 平移到四面體的中心
-  //glTranslatef(0.0f, -2.0f, 3.0f);
+ // Sample 4 points
+ vec3 p0 = vec3(fragCoord, sin(offset - 0.1 * fragCoord.y));
+ vec3 p1 = vec3(fragCoordX, sin(offset - 0.1 * fragCoordX.y));
+ vec3 p2 = vec3(fragCoordY, sin(offset - 0.1 * fragCoordY.y));
 
-    glBegin(GL_TRIANGLES);
-    // up
-    glVertex3f(-1.0f, 0.0f, 0.0f);
-    glVertex3f(1.0f, 0.0f, 0.0f);
-    glVertex3f(0.0f, 0.5f, 0.0f);
+ // Form triangles and calculate surface normals
+ vec3 edge1 = p1 - p0;
+ vec3 edge2 = p2 - p0;
+ vec3 surfaceNormal = normalize(cross(edge1, edge2));
 
-    // down behind
-    glVertex3f(1.0f, 0.0f, 0.0f);
-    glVertex3f(-1.0f, 0.0f, 0.0f);
-    glVertex3f(0.0f, 0.0f, -1.0f);
+ // Average surface normal
+ vec3 avgNormal = normalize(surfaceNormal);
 
-    // down LEFT
-    glVertex3f(0.0f, 0.0f, -1.0f);
-    glVertex3f(0.0f, 0.5f, 0.0f);
-    glVertex3f(1.0f, 0.0f, 0.0f);
+ // Transform normal from [-1, 1] to RGB [0, 1]
+ normal = vec4(avgNormal * 0.5 + 0.5, 1.0);
 
-
-
-    // down right
-    glVertex3f(0.0f, 0.0f, -1.0f);
-
-    glVertex3f(-1.0f, 0.0f, 0.0f);
-    glVertex3f(0.0f, 0.5f, 0.0f);
-
-
-
-    glEnd();
-
-  glPopMatrix();  // 恢復之前保存的繪圖矩陣
-}
+ // Output the height map
+ height = p0.z * 0.5 + 0.5;
 ```
 #### III. wing
 This part is easy just render a cube and make sure it will in right location
