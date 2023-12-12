@@ -284,9 +284,9 @@ the hint "remove the transaction matrix". Thus error happened.
 ## Compare sphere and cube with two scenes
 |  | cube  | sphere  |
 |  ----  | ----  | ----  |
-|  ----  | scene1  | ----  |
+|  scene1   | ---- | ----  |
 | Reflect | Reflect image is same as the actually view | Reflected image is distorted by the curvature of the sphere.  |
 | Refract | NO effect | The closer I get to the sphere, the stronger the refractive effect becomes. |
-|  ----  | scene2  | ----  |
-| Basiclly same as scene1 but the scene is all blue make the difference between cuba and sphere diffcault to discover. |
+|  scene2 | ---- | ----  |
+| Basiclly same as scene1 but the scene is all blue make the difference between cube and sphere diffcault to discover. |
 
