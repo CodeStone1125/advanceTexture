@@ -13,10 +13,20 @@ uniform float fresnelBias;
 uniform float fresnelScale;
 uniform float fresnelPower;
 
-void main() {
-  // Refractive index of R, G, and B respectively
-  vec3 Eta = vec3(1.39, 1.44, 1.47);
+vec3 refract_custom(vec3 I, vec3 N, float eta) {
+    float k = 1.0 - eta * eta * (1.0 - dot(N, I) * dot(N, I));
+    vec3 R;
 
+    if (k < 0.0) {
+        R = vec3(0.0);
+    } else {
+        R = eta * I - (eta * dot(N, I) + sqrt(k)) * N;
+    }
+
+    return R;
+}
+
+void main() {
   // TODO2: fresnel reflection and refraction
   // Hint:
   //   1. You should query the texture for R, G, and B values respectively to create dispersion effect.
@@ -31,29 +41,42 @@ void main() {
   //   3. Reflect : https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/reflect.xhtml
   //   4. Clamp   : https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/clamp.xhtml
   //   5. Mix     : https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/mix.xhtml
+    // Refractive index of R, G, and B respectively
+    vec3 Eta = vec3(1.39, 1.44, 1.47);
 
-  // Calculate the view direction and normalize it
-  vec3 viewDirection = normalize(fs_in.viewPosition - fs_in.position);
+    // Calculate the view direction and the angle between view direction and normal
+    vec3 viewDir = normalize(fs_in.viewPosition - fs_in.position);
+    float cosTheta = dot(viewDir, normalize(fs_in.normal));
 
-  // Calculate the reflection vector
-  vec3 reflection = reflect(viewDirection, normalize(fs_in.normal));
+    // Fresnel equation
+    float fresnelTerm = clamp(fresnelBias + fresnelScale * pow(1.0 - cosTheta, fresnelPower), 0.0, 1.0);
 
-  // Simulate dispersion (chromatic aberration) by separately refracting each color channel
-  vec3 refractionColor = vec3(
-      refract(viewDirection, normalize(fs_in.normal), 1.0 / Eta.r).r,
-      refract(viewDirection, normalize(fs_in.normal), 1.0 / Eta.g).g,
-      refract(viewDirection, normalize(fs_in.normal), 1.0 / Eta.b).b
-  );
 
-  // Sample the skybox texture for reflection color
-  vec3 reflectionColor = texture(skybox, reflection).rgb;
+    // Use mix to interpolate between different values for each parameter
+    float interpolatedFresnelBias = mix(1.0, fresnelBias, fresnelTerm);  // Adjusted to invert the bias effect
+    float interpolatedFresnelScale = mix(1.0, fresnelScale, fresnelTerm);
+    float interpolatedFresnelPower = mix(2.0, fresnelPower, fresnelTerm);
 
-  // Calculate fresnel factor using the empirical approach
-  float fresnelFactor = clamp(fresnelBias + fresnelScale * pow(1.0 + dot(viewDirection, normalize(fs_in.normal)), fresnelPower), 0.0, 1.0);
+    // Calculate reflection vector using the reflect function
+    vec3 reflection = reflect(-viewDir, normalize(fs_in.normal));
 
-  // Mix reflection and refraction colors based on fresnel factor
-  vec3 finalColor = mix(reflectionColor, refractionColor, fresnelFactor);
+    // Query the texture for reflection color from the skybox
+    vec3 reflectionColor = texture(skybox, reflection).rgb;
 
-  // Output the final color
-  FragColor = vec4(finalColor, 1.0);
+    // Calculate refraction vector using the custom refract function
+    vec3 refraction = refract_custom(-viewDir, normalize(fs_in.normal), 1.0 / Eta.x);
+
+    // Query the texture for refraction color from the skybox
+    vec3 refractionColor = texture(skybox, refraction).rgb;
+
+    // Use mix to interpolate between reflection and refraction based on Fresnel term and FresnelBias
+    vec3 finalColor = mix(reflectionColor, refractionColor, 1.0 - fresnelTerm * fresnelBias);
+
+
+    // Correcting for the inverted reflection
+    finalColor = pow(finalColor, vec3(1.0/2.2));
+
+    // Output the final color
+    FragColor = vec4(finalColor, 1.0);
+
 }

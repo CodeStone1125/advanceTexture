@@ -5,7 +5,6 @@ layout(location = 1) out float height;
 uniform float offset;
 
 void main() {
-  const float delta = 0.01;
   // TODO3: Generate the normal map.
   //   1. Get the position of the fragment. (screen space)
   //   2. Sample 4 points from combination of x +- delta, y +- delta
@@ -16,7 +15,29 @@ void main() {
   //   1. Height at (x, y) = H(x, y) = sin(offset - 0.1 * y)
   //   2. A simple tranform from [-1, 1] to [0, 1] is f(x) = x * 0.5 + 0.5
   //   3. For sample points, z = H(x +- delta, y +- delta)
+    const float delta = 0.01;
+    
+    // Get the position of the fragment in screen space
+    vec2 fragCoord = gl_FragCoord.xy;
+    vec2 fragCoordX = vec2(fragCoord.x + delta, fragCoord.y);
+    vec2 fragCoordY = vec2(fragCoord.x, fragCoord.y + delta);
 
-  normal = vec4(0);
-  height = 0.5;
+    // Sample 4 points
+    vec3 p0 = vec3(fragCoord, sin(offset - 0.1 * fragCoord.y));
+    vec3 p1 = vec3(fragCoordX, sin(offset - 0.1 * fragCoordX.y));
+    vec3 p2 = vec3(fragCoordY, sin(offset - 0.1 * fragCoordY.y));
+
+    // Form triangles and calculate surface normals
+    vec3 edge1 = p1 - p0;
+    vec3 edge2 = p2 - p0;
+    vec3 surfaceNormal = normalize(cross(edge1, edge2));
+
+    // Average surface normal
+    vec3 avgNormal = normalize(surfaceNormal);
+
+    // Transform normal from [-1, 1] to RGB [0, 1]
+    normal = vec4(avgNormal * 0.5 + 0.5, 1.0);
+
+    // Output the height map
+    height = p0.z * 0.5 + 0.5;
 }

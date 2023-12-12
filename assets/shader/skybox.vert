@@ -1,25 +1,25 @@
 #version 330 core
-layout(location = 0) in vec3 position_in;
+layout (location = 0) in vec3 aPos;
 
-out vec3 textureCoordinate;
+out vec3 TexCoords;
 
-uniform mat4 view;
 uniform mat4 projection;
+uniform mat4 view;
 
-void main() {
-  textureCoordinate = position_in;
-  
-  // TODO1: Set gl_Position
-  // Hint:
-  //   1. We want the skybox infinitely far from us. So the z should be 1.0 after perspective division.
-  //   2. We don't want the skybox moving when we move. So the translation in the view matrix should be removed.
+void main()
+{
+	TexCoords = aPos;
 
-  // Set the position in view space
-  vec4 viewPosition = view * vec4(position_in, 1.0);
-  
-  // Remove translation from the view matrix
-  viewPosition = mat4(mat3(view)) * viewPosition;
+	// Convert the view matrix to mat3
+	mat3 viewMat3 = mat3(view);
+	vec3 viewPos3 = viewMat3 * aPos;
 
-  // Set the final position in clip space
-  gl_Position = projection * viewPosition;
-}
+	// Convert the viewPos3 back to vec4
+	vec4 viewPos4 = vec4(viewPos3, 1.0);
+
+	// Use the modified viewPos4 in the projection
+	vec4 pos = projection * viewPos4;
+
+	// Set gl_Position with pos.xyww
+	gl_Position = pos.xyww;
+}  
