@@ -62,50 +62,11 @@ cd bin
 
 # Reports
 ## Implementation(HOW & WHY)
-### 1. camera
-For `camera.cpp`, I finish it with the fountions below:
-* `front = original_front * rotation`: For caculate front direction of camera
-* `up = original_up * rotation;`: For caculate up direction of camera
-* `right = glm::cross(front, up)`: Caculate rightside of the camera with corss up and front
-* `viewMatrix = glm::lookAt(position, position + front, up)`: create a camera in 3D world by the given
-  position and face the given direction
-* `projectionMatrix = glm::perspective(FOV, aspectRatio, zNear, zFar)`: Project the 3D world
-  on 2D computer screen 
-
+### 1. SKYBOX
+In `skybox.frag`, I completed the shader with the following function:
+I retrieve the texture from the skybox and assign it to the fragment as follows:
 ```cpp
-void Camera::updateViewMatrix() {
-  constexpr glm::vec3 original_front(0, 0, -1);
-  constexpr glm::vec3 original_up(0, 1, 0);
-
-  /* TODO#1-1: Calculate lookAt matrix
-   *       1. Rotate original_front and original_up using this->rotation.
-   *       2. Calculate right vector by cross product.
-   *       3. Calculate view matrix with position.
-   * Hint:
-   *       You can calculate the matrix by hand, or use
-   *       glm::lookAt (https://glm.g-truc.net/0.9.9/api/a00247.html#gaa64aa951a0e99136bba9008d2b59c78e)
-   * Note: You must not use gluLookAt
-   */
-
-  front = original_front * rotation;
-  up = original_up * rotation;
-  right = glm::cross(front, up);
-
-  viewMatrix = glm::lookAt(position, position + front, up);
-}
-
-void Camera::updateProjectionMatrix(float aspectRatio) {
-  constexpr float FOV = glm::radians(45.0f);
-  constexpr float zNear = 0.1f;
-  constexpr float zFar = 100.0f;
-  /* TODO#1-2: Calculate perspective projection matrix
-   * Hint: You can calculate the matrix by hand, or use
-   *       glm::perspective (https://glm.g-truc.net/0.9.9/api/a00243.html#ga747c8cf99458663dd7ad1bb3a2f07787)
-   * Note: You must not use gluPerspective
-   */
-
-  projectionMatrix = glm::perspective(FOV, aspectRatio, zNear, zFar);
-}
+FragColor = texture(skybox, TexCoords);
 ```
 ### 2. Render airplane
 In this section, there 4 parts:
