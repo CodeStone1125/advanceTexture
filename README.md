@@ -68,7 +68,7 @@ I retrieve the texture from the skybox and assign it to the fragment as follows:
 ```cpp
 FragColor = texture(skybox, TexCoords);
 ```
-amd in `skybox.vert`, I completed the shader with the following function:
+and in `skybox.vert`, I completed the shader with the following function:
 1. I remove the transaction matrix by convert view to mat3 format
 then for further computation , I convert it to mat4 and set w axis to 1 to make
  it to Homogeneous Coordinates.
@@ -95,69 +95,56 @@ vec4 pos = projection * viewPos4;
 // Set gl_Position with pos.xyww
 gl_Position = pos.xyww;
 ```
-5. 
-```cpp
-FragColor = texture(skybox, TexCoords);
-```
-### 2. Render airplane
-In this section, there 4 parts:
-* Body
-* tail
-* wing
-* Airplane
 
-#### I. Body
-* Step1. First, I set length and radius to fit the specification in the "Rules"
-* Step2. Render a cylinder by draw bottom circle, top circle and side of the cylinder perspective
-* Step3. rotate it to make it look like airplane body and move it to location set in the "Rules"
+### 2. REFRACT ＆ REFLECT
+In `fresnel.frag` I implement the fountion with:
+1. I calculate the View Direction and Cosine of the Angle, where `viewDir` is the normalized view direction,
+and `cosTheta` is the cosine of the angle between the view direction and the surface normal.
+
+2. I compute the Fresnel Equation using `fresnelPower`, `fresnelScale`, and `fresnelBias`, and then use `clamp` to
+limit the value range to [0.0, 1.0].
+
+3. I adjust fresnelTerm with `mix` to ensure that the adjustments to `fresnelPower`, `fresnelScale`, and `fresnelBias`
+can be smoothly presented on the screen.
 
 ```cpp
-void renderAirplaneBody() {
-  const float radius = 0.5f;
-  const float height = 4.0f;
-  const int segments = 64;
-  const float slice = 360.0f / segments;
-  glColor3f(BLUE);
-  glTranslatef(0.0f, 0.0f, -2.0f);      // 根據需要進行平移
-  glRotatef(90.0f, 1.0f, 0.0f, 0.0f); 
-  glBegin(GL_QUAD_STRIP);
+    // Refractive index of R, G, and B respectively
+    vec3 Eta = vec3(1.39, 1.44, 1.47);
 
-  for (int i = 0; i <= segments; i++) {
-    float angle = slice * i;
-    float x = radius * std::cos(ANGLE_TO_RADIAN(angle));
-    float z = radius * std::sin(ANGLE_TO_RADIAN(angle));
+    // Calculate the view direction and the angle between view direction and normal
+    vec3 viewDir = normalize(fs_in.viewPosition - fs_in.position);
+    float cosTheta = dot(viewDir, normalize(fs_in.normal));
 
-    // Vertices on the side of the cylinder
-    glVertex3f(x, 0.0f, z);
-    glVertex3f(x, height, z);
-  }
+    // Fresnel equation
+    float fresnelTerm = clamp(fresnelBias + fresnelScale * pow(1.0 - cosTheta, fresnelPower), 0.0, 1.0);
 
-  glEnd();
 
-  // Top and bottom faces
-  glBegin(GL_TRIANGLE_FAN);
-  glVertex3f(0.0f, 0.0f, 0.0f);  // Center of the bottom face
+    // Use mix to interpolate between different values for each parameter
+    float interpolatedFresnelBias = mix(1.0, fresnelBias, fresnelTerm);  // Adjusted to invert the bias effect
+    float interpolatedFresnelScale = mix(1.0, fresnelScale, fresnelTerm);
+    float interpolatedFresnelPower = mix(2.0, fresnelPower, fresnelTerm);
 
-  for (int i = 0; i <= segments; i++) {
-    float angle = slice * i;
-    float x = radius * std::cos(ANGLE_TO_RADIAN(angle));
-    float z = radius * std::sin(ANGLE_TO_RADIAN(angle));
-    glVertex3f(x, 0.0f, z);
-  }
-  glEnd();
+    // Calculate reflection vector using the reflect function
+    vec3 reflection = reflect(-viewDir, normalize(fs_in.normal));
 
-// Reverse the rendering order for the bottom face
-  glBegin(GL_TRIANGLE_FAN);
-  glVertex3f(0.0f, 4.0f, 0.0f);  // Center of the bottom face
+    // Query the texture for reflection color from the skybox
+    vec3 reflectionColor = texture(skybox, reflection).rgb;
 
-  for (int i = segments; i >= 0 ; i--) {  // 改為遞增
-    float angle = slice * i;
-    float x = radius * std::cos(ANGLE_TO_RADIAN(angle));
-    float z = radius * std::sin(ANGLE_TO_RADIAN(angle));  // 使用 std::sin
-    glVertex3f(x, 4.0f, z);
-  }
-  glEnd();
-}
+    // Calculate refraction vector using the custom refract function
+    vec3 refraction = refract_custom(-viewDir, normalize(fs_in.normal), 1.0 / Eta.x);
+
+    // Query the texture for refraction color from the skybox
+    vec3 refractionColor = texture(skybox, refraction).rgb;
+
+    // Use mix to interpolate between reflection and refraction based on Fresnel term and FresnelBias
+    vec3 finalColor = mix(reflectionColor, refractionColor, 1.0 - fresnelTerm * fresnelBias);
+
+
+    // Correcting for the inverted reflection
+    finalColor = pow(finalColor, vec3(1.0/2.2));
+
+    // Output the final color
+    FragColor = vec4(finalColor, 1.0);
 ```
 
 #### II. tail
